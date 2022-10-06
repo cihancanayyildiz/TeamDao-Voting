@@ -114,6 +114,10 @@ pub mod team_dao_voting {
 
         let votes = vote.to_lowercase();
 
+        if proposal.voted_players.contains(&ctx.accounts.signer.key()) {
+            return err!(ErrorCode::PlayerAlreadyVoted);
+        }
+
         if votes == "yes" {
             proposal.vote_yes += 1;
         } else if votes == "no" {
@@ -122,7 +126,9 @@ pub mod team_dao_voting {
             return err!(ErrorCode::InvalidVoteType);
         }
 
-        if proposal.vote_yes + proposal.vote_no == team.players.len().try_into().unwrap() {
+        proposal.voted_players.push(ctx.accounts.signer.key()); // pushing voter player to voted_players vector for validation check.
+
+        if proposal.voted_players.len() == team.players.len() {
             if proposal.vote_yes > proposal.vote_no {
                 proposal.status = ProposalStatus::Accepted;
                 if proposal.proposal_type == "Prize Distribution" {
@@ -136,6 +142,24 @@ pub mod team_dao_voting {
                 proposal.status = ProposalStatus::Draw;
             }
         }
+        Ok(())
+    }
+
+    pub fn transfer_ownership(ctx: Context<TransferOwnership>, new_captain: Pubkey) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
+
+        if team.team_captain == new_captain {
+            return err!(ErrorCode::PlayerAlreadyTeamCaptain);
+        }
+
+        if !team.players.contains(&new_captain) {
+            return err!(ErrorCode::PlayerDoesntExist);
+        }
+        let old_captain = team.team_captain;
+        team.team_captain = new_captain;
+
+        msg!("Ownership transfered from {} to {}", old_captain, new_captain);
+
         Ok(())
     }
 }
@@ -223,6 +247,16 @@ pub struct LeaveTheTeam<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct TransferOwnership<'info> {
+    #[account(mut, seeds=["team_account".as_bytes(), team_account.name.as_bytes()],bump , constraint = team_account.team_captain == signer.key())] // Only team captain can change the ownership.
+    pub team_account: Account<'info, Team>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 pub struct Team {
     pub name: String,
@@ -247,6 +281,7 @@ pub struct Proposal {
     pub prize_distribution: Vec<u32>,
     pub tournament_selection: String,
     pub status: ProposalStatus,
+    pub voted_players: Vec<Pubkey>,
     // pub lamports: u64,
 }
 
@@ -274,4 +309,10 @@ pub enum ErrorCode {
     ProposalIsEnded,
     #[msg("Please enter valid vote type!")]
     InvalidVoteType,
+    #[msg("This player already voted for this proposal!")]
+    PlayerAlreadyVoted,
+    #[msg("Player doesnt exist in the team.")]
+    PlayerDoesntExist,
+    #[msg("This player is already team captain")]
+    PlayerAlreadyTeamCaptain,
 }

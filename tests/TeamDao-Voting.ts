@@ -163,6 +163,79 @@ describe("TeamDao-Voting", () => {
         );*/
     });
 
+    it("Players give their votes for proposal", async () => {
+        const [team] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("team_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Team"),
+            ],
+            program.programId
+        );
+        const [proposal] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("proposal_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Proposal"),
+            ],
+            program.programId
+        );
+
+        await program.methods
+            .giveVote("yes")
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+            })
+            .rpc();
+
+        await program.methods
+            .giveVote("yes")
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+                signer: player1.publicKey,
+            })
+            .signers([player1])
+            .rpc();
+
+        await program.methods
+            .giveVote("no")
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+                signer: player2.publicKey,
+            })
+            .signers([player2])
+            .rpc();
+
+        const proposalacc = await program.account.proposal.fetch(proposal);
+
+        console.log(proposalacc);
+    });
+
+    it("Transfer ownership", async () => {
+        const [team] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("team_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Team"),
+            ],
+            program.programId
+        );
+        let oldTeamData = await program.account.team.fetch(team);
+
+        console.log(`Old team captain ${oldTeamData.teamCaptain.toBase58()}`);
+
+        await program.methods
+            .transferOwnership(player1.publicKey)
+            .accounts({
+                teamAccount: team,
+            })
+            .rpc();
+
+        let teamData = await program.account.team.fetch(team);
+
+        console.log(`New team captain ${teamData.teamCaptain.toBase58()}`);
+    });
+
     xit("Create second Team.", async () => {
         let user2 = anchor.web3.Keypair.generate();
 
