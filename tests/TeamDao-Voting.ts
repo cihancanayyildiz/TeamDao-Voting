@@ -9,7 +9,9 @@ describe("TeamDao-Voting", () => {
     anchor.setProvider(provider);
 
     const program = anchor.workspace.TeamDaoVoting as Program<TeamDaoVoting>;
-    const newPlayer = anchor.web3.Keypair.generate();
+    const player1 = anchor.web3.Keypair.generate();
+    const player2 = anchor.web3.Keypair.generate();
+
     it("Create a Team.", async () => {
         const [team] = await anchor.web3.PublicKey.findProgramAddress(
             [
@@ -21,7 +23,7 @@ describe("TeamDao-Voting", () => {
         console.log(`User1 key: ${provider.wallet.publicKey.toBase58()}`);
         console.log(`Team1 acc: ${team.toBase58()}`);
 
-        const ix = program.methods.createTeam("Cihan's Team", 10).accounts({
+        const ix = program.methods.createTeam("Cihan's Team", 3).accounts({
             teamAccount: team,
         });
         const tx = await ix.rpc().catch(console.error);
@@ -31,7 +33,7 @@ describe("TeamDao-Voting", () => {
         console.log(data.teamCaptain.toBase58());
     });
 
-    it("Invite a player to the Team", async () => {
+    it("Invite player1 and player2 to the Team", async () => {
         const [team] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("team_account"),
@@ -40,18 +42,28 @@ describe("TeamDao-Voting", () => {
             program.programId
         );
 
-        console.log(`Invited player = ${newPlayer.publicKey}`);
+        console.log(`Invited player1 = ${player1.publicKey}`);
         const tx = await program.methods
-            .invitePlayer(newPlayer.publicKey)
+            .invitePlayer(player1.publicKey)
             .accounts({
                 teamAccount: team,
             })
             .rpc();
 
+        console.log(`Invited player2 = ${player2.publicKey}`);
         console.log(`Transaction id: ${tx}`);
+
+        const tx2 = await program.methods
+            .invitePlayer(player2.publicKey)
+            .accounts({
+                teamAccount: team,
+            })
+            .rpc();
+
+        console.log(`Transaction id: ${tx2}`);
     });
 
-    it("Join the team", async () => {
+    it("Player1 and Player2 joined to the team", async () => {
         const [team] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("team_account"),
@@ -64,18 +76,32 @@ describe("TeamDao-Voting", () => {
             .joinTheTeam()
             .accounts({
                 teamAccount: team,
-                signer: newPlayer.publicKey,
+                signer: player1.publicKey,
             })
-            .signers([newPlayer])
+            .signers([player1])
             .rpc();
 
+        console.log(`player1 joined= ${player1.publicKey}`);
         console.log(`Transaction id: ${tx}`);
 
+        const tx2 = await program.methods
+            .joinTheTeam()
+            .accounts({
+                teamAccount: team,
+                signer: player2.publicKey,
+            })
+            .signers([player2])
+            .rpc();
+
+        console.log(`player2 joined= ${player2.publicKey}`);
+        console.log(`Transaction id: ${tx2}`);
+
         const accData = await program.account.team.fetch(team);
+        console.log("Team Members:");
         console.log(accData.players.map((player) => player.toBase58()));
     });
 
-    xit("Create a proposal for team", async () => {
+    it("Create a proposal for team", async () => {
         const [team] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("team_account"),
@@ -91,6 +117,7 @@ describe("TeamDao-Voting", () => {
             program.programId
         );
 
+        /*
         let proposal_user = anchor.web3.Keypair.generate();
         let dropsig = await program.provider.connection.requestAirdrop(
             proposal_user.publicKey,
@@ -105,11 +132,17 @@ describe("TeamDao-Voting", () => {
 
         await program.provider.connection.confirmTransaction(dropsig2);
 
-        console.log(`Proposal user: ${proposal_user.publicKey}`);
+        console.log(`Proposal user: ${proposal_user.publicKey}`);*/
         console.log(`Proposal acc: ${proposal.toBase58()}`);
 
         const ix = program.methods
-            .createProposal("Cihan's Proposal", "Voting")
+            .createProposal(
+                "Cihan's Proposal",
+                "Voting",
+                "Prize Distribution",
+                [10, 20, 30],
+                ""
+            )
             .accounts({
                 teamAccount: team,
                 proposalAccount: proposal,
