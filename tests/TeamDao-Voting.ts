@@ -140,7 +140,7 @@ describe("TeamDao-Voting", () => {
                 "Cihan's Proposal",
                 "Voting",
                 "Prize Distribution",
-                [10, 20, 30],
+                [40, 30, 30],
                 ""
             )
             .accounts({
