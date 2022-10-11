@@ -14,6 +14,7 @@ pub mod team_dao_voting {
         team.invited_players = Vec::new();
         team.team_captain = ctx.accounts.signer.key();
         team.players.push(ctx.accounts.signer.key());
+        team.tournaments = Vec::new();
 
         msg!("Team {} successfully created. Owner of the team : {}", team.name, team.team_captain);
         Ok(())
@@ -34,16 +35,17 @@ pub mod team_dao_voting {
         proposal.vote_yes = 0;
         proposal.vote_no = 0;
         proposal.status = ProposalStatus::Active;
+        proposal.proposal_type = proposal_type;
 
         let team = &mut ctx.accounts.team_account;
 
         // Tournament selection is needed before Prize Distribution.
-        if proposal_type == "Tournament Selection" {
+        if proposal.proposal_type == "Tournament Selection" {
             if tournament_selection.is_empty() {
                 return err!(ErrorCode::TournamentSelectionIsInvalid);
             }
             proposal.tournament_selection = tournament_selection.to_owned();
-        } else if proposal_type == "Prize Distribution" {
+        } else if proposal.proposal_type == "Prize Distribution" {
             if tournament_selection.is_empty() {
                 return err!(ErrorCode::TournamentSelectionIsInvalid);
             }
@@ -61,7 +63,7 @@ pub mod team_dao_voting {
                 return err!(ErrorCode::PrizeDistributionParametersNotValid);
             }
             proposal.prize_distribution = prize_distribution;
-            proposal.proposal_type = proposal_type;
+            proposal.tournament_selection = tournament_selection.to_owned();
         } else {
             // todo: throw an error.
         }
@@ -169,9 +171,11 @@ pub mod team_dao_voting {
         Ok(())
     }
 
-    pub fn distribute_the_price(ctx: Context<DistributePrice>) -> Result<()> {
+    pub fn claim_the_prize(ctx: Context<ClaimPrize>, tournament_prize: u64) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal_account;
         let team = &mut ctx.accounts.team_account;
+        let pda_account = team.to_account_info();
+        let send_to_account = ctx.accounts.signer.to_account_info();
 
         //Check if proposal is a prize distribution proposal and accepted or not
         if
@@ -181,13 +185,46 @@ pub mod team_dao_voting {
             return err!(ErrorCode::ProposalIsInvalid);
         }
         // Check lamports on the team account if it is >0 or not
-        let team_lamports: u64 = team.to_account_info().lamports();
+        //let team_lamports = 10_000_000_000;
+
+        let team_lamports: u64 = tournament_prize;
         if team_lamports <= 0 {
             return err!(ErrorCode::TeamInsufficientFunds);
         }
 
+        if !team.players.contains(send_to_account.key) {
+            return err!(ErrorCode::PlayerDoesntExist);
+        }
+
+        if proposal.claimed_players.contains(send_to_account.key) {
+            return err!(ErrorCode::PlayerAlreadyClaimed);
+        }
+
+        let player_index = team.players
+            .iter()
+            .position(|player| player == send_to_account.key)
+            .unwrap();
+
         //Transfer lamports to users by checking proposal account prize distribution.
         let prize_distribution = &proposal.prize_distribution;
+        let player_prize = (team_lamports * (prize_distribution[player_index] as u64)) / 100;
+
+        // msg!("Balance: {}", pda_account.lamports());
+
+        **pda_account.try_borrow_mut_lamports()? -= player_prize;
+        **send_to_account.try_borrow_mut_lamports()? += player_prize;
+
+        proposal.claimed_players.push(send_to_account.key.to_owned());
+
+        /* 
+        let seeds = &["team_account".as_bytes(), team.name.as_bytes(), &[team.bump]];
+        let ix = transfer(&team.key(), &ctx.accounts.signer.key(), lamports[0]);
+
+        invoke_signed(
+            &ix,
+            &[team.to_account_info(), ctx.accounts.signer.to_account_info()],
+            &[&seeds[..]]
+        )?;*/
 
         Ok(())
     }
@@ -287,8 +324,8 @@ pub struct TransferOwnership<'info> {
 }
 
 #[derive(Accounts)]
-pub struct DistributePrice<'info> {
-    #[account(mut,seeds=["team_account".as_bytes(), team_account.name.as_bytes()], bump, constraint = team_account.team_captain == signer.key())] // Only team captain can distribute the price.
+pub struct ClaimPrize<'info> {
+    #[account(mut,seeds=["team_account".as_bytes(), team_account.name.as_bytes()], bump)]
     pub team_account: Account<'info, Team>,
 
     #[account(mut, seeds = ["proposal_account".as_bytes(), proposal_account.title.as_bytes()], bump)] // Proposal that prize distribution approved.
@@ -323,7 +360,7 @@ pub struct Proposal {
     pub tournament_selection: String,
     pub status: ProposalStatus,
     pub voted_players: Vec<Pubkey>,
-    // pub lamports: u64,
+    pub claimed_players: Vec<Pubkey>,
 }
 
 #[derive(Debug, Clone, PartialEq, AnchorSerialize, AnchorDeserialize)]
@@ -362,4 +399,6 @@ pub enum ErrorCode {
     ProposalIsInvalid,
     #[msg("Team Account doesnt have any funds!")]
     TeamInsufficientFunds,
+    #[msg("Player already claimed his prize.")]
+    PlayerAlreadyClaimed,
 }

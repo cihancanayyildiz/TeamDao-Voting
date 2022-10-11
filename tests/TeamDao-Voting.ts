@@ -101,7 +101,7 @@ describe("TeamDao-Voting", () => {
         console.log(accData.players.map((player) => player.toBase58()));
     });
 
-    it("Create a proposal for team", async () => {
+    it("Create a proposal for tournament selection", async () => {
         const [team] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("team_account"),
@@ -112,7 +112,7 @@ describe("TeamDao-Voting", () => {
         const [proposal] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("proposal_account"),
-                anchor.utils.bytes.utf8.encode("Cihan's Proposal"),
+                anchor.utils.bytes.utf8.encode("TournamentX Selection"),
             ],
             program.programId
         );
@@ -137,11 +137,11 @@ describe("TeamDao-Voting", () => {
 
         const ix = program.methods
             .createProposal(
-                "Cihan's Proposal",
+                "TournamentX Selection",
                 "Voting",
-                "Prize Distribution",
-                [40, 30, 30],
-                ""
+                "Tournament Selection",
+                [],
+                "Tournament X"
             )
             .accounts({
                 teamAccount: team,
@@ -174,7 +174,121 @@ describe("TeamDao-Voting", () => {
         const [proposal] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 anchor.utils.bytes.utf8.encode("proposal_account"),
-                anchor.utils.bytes.utf8.encode("Cihan's Proposal"),
+                anchor.utils.bytes.utf8.encode("TournamentX Selection"),
+            ],
+            program.programId
+        );
+
+        await program.methods
+            .giveVote("yes")
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+            })
+            .rpc();
+
+        await program.methods
+            .giveVote("yes")
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+                signer: player1.publicKey,
+            })
+            .signers([player1])
+            .rpc();
+
+        await program.methods
+            .giveVote("no")
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+                signer: player2.publicKey,
+            })
+            .signers([player2])
+            .rpc();
+
+        const proposalacc = await program.account.proposal.fetch(proposal);
+
+        console.log(proposalacc);
+
+        const accs = await program.account.team.all();
+        console.log(accs);
+    });
+
+    it("Create a proposal for prize distribution", async () => {
+        const [team] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("team_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Team"),
+            ],
+            program.programId
+        );
+        const [proposal] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("proposal_account"),
+                anchor.utils.bytes.utf8.encode("TournamentX PrizeDistribution"),
+            ],
+            program.programId
+        );
+
+        /*
+        let proposal_user = anchor.web3.Keypair.generate();
+        let dropsig = await program.provider.connection.requestAirdrop(
+            proposal_user.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL
+        );
+        await program.provider.connection.confirmTransaction(dropsig);
+
+        let dropsig2 = await program.provider.connection.requestAirdrop(
+            proposal,
+            5 * anchor.web3.LAMPORTS_PER_SOL
+        );
+
+        await program.provider.connection.confirmTransaction(dropsig2);
+
+        console.log(`Proposal user: ${proposal_user.publicKey}`);*/
+        console.log(`Proposal acc: ${proposal.toBase58()}`);
+
+        const ix = program.methods
+            .createProposal(
+                "TournamentX PrizeDistribution",
+                "Voting",
+                "Prize Distribution",
+                [40, 30, 30],
+                "Tournament X"
+            )
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+            });
+
+        const tx = await ix.rpc().catch(console.error);
+
+        console.log(`Transaction: ${tx}`);
+
+        const proposals = await program.account.proposal.all();
+        const accs = await program.account.team.all();
+        console.log(proposals);
+        console.log(accs);
+        /*
+        const proposalacc = await program.account.proposal.fetch(proposal);
+        console.log(
+            proposalacc.lamports.toNumber() / anchor.web3.LAMPORTS_PER_SOL
+        );*/
+    });
+
+    it("Players give their votes for proposal", async () => {
+        const [team] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("team_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Team"),
+            ],
+            program.programId
+        );
+        const [proposal] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("proposal_account"),
+                anchor.utils.bytes.utf8.encode("TournamentX PrizeDistribution"),
             ],
             program.programId
         );
@@ -212,6 +326,97 @@ describe("TeamDao-Voting", () => {
         console.log(proposalacc);
     });
 
+    it("Distribute the prize", async () => {
+        const [team] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("team_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Team"),
+            ],
+            program.programId
+        );
+        const [proposal] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("proposal_account"),
+                anchor.utils.bytes.utf8.encode("TournamentX PrizeDistribution"),
+            ],
+            program.programId
+        );
+
+        // Airdropping sol for team account.
+        let dropsig2 = await program.provider.connection.requestAirdrop(
+            team,
+            10 * anchor.web3.LAMPORTS_PER_SOL
+        );
+        await program.provider.connection.confirmTransaction(dropsig2);
+
+        let team_pda_account_balance =
+            (await program.provider.connection.getBalance(team)) /
+            anchor.web3.LAMPORTS_PER_SOL;
+        let player0_balance =
+            (await program.provider.connection.getBalance(
+                provider.wallet.publicKey
+            )) / anchor.web3.LAMPORTS_PER_SOL;
+        let player1_balance =
+            (await program.provider.connection.getBalance(player1.publicKey)) /
+            anchor.web3.LAMPORTS_PER_SOL;
+        let player2_balance =
+            (await program.provider.connection.getBalance(player2.publicKey)) /
+            anchor.web3.LAMPORTS_PER_SOL;
+
+        console.log(
+            `Team balance: ${team_pda_account_balance} \n Player0 balance: ${player0_balance} \n Player1 balance: ${player1_balance} \n Player2 balance: ${player2_balance}`
+        );
+
+        const tx = await program.methods
+            .claimThePrize(new anchor.BN(10 * anchor.web3.LAMPORTS_PER_SOL))
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+            })
+            .rpc()
+            .catch(console.error);
+
+        const tx2 = await program.methods
+            .claimThePrize(new anchor.BN(10 * anchor.web3.LAMPORTS_PER_SOL))
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+                signer: player1.publicKey,
+            })
+            .signers([player1])
+            .rpc()
+            .catch(console.error);
+
+        const tx3 = await program.methods
+            .claimThePrize(new anchor.BN(10 * anchor.web3.LAMPORTS_PER_SOL))
+            .accounts({
+                teamAccount: team,
+                proposalAccount: proposal,
+                signer: player2.publicKey,
+            })
+            .signers([player2])
+            .rpc()
+            .catch(console.error);
+
+        team_pda_account_balance =
+            (await program.provider.connection.getBalance(team)) /
+            anchor.web3.LAMPORTS_PER_SOL;
+        player0_balance =
+            (await program.provider.connection.getBalance(
+                provider.wallet.publicKey
+            )) / anchor.web3.LAMPORTS_PER_SOL;
+        player1_balance =
+            (await program.provider.connection.getBalance(player1.publicKey)) /
+            anchor.web3.LAMPORTS_PER_SOL;
+        player2_balance =
+            (await program.provider.connection.getBalance(player2.publicKey)) /
+            anchor.web3.LAMPORTS_PER_SOL;
+
+        console.log(
+            `Team balance: ${team_pda_account_balance} \n Player0 balance: ${player0_balance} \n Player1 balance: ${player1_balance} \n Player2 balance: ${player2_balance}`
+        );
+    });
+
     it("Transfer ownership", async () => {
         const [team] = await anchor.web3.PublicKey.findProgramAddress(
             [
@@ -234,51 +439,5 @@ describe("TeamDao-Voting", () => {
         let teamData = await program.account.team.fetch(team);
 
         console.log(`New team captain ${teamData.teamCaptain.toBase58()}`);
-    });
-
-    xit("Create second Team.", async () => {
-        let user2 = anchor.web3.Keypair.generate();
-
-        let dropsig = await program.provider.connection.requestAirdrop(
-            user2.publicKey,
-            anchor.web3.LAMPORTS_PER_SOL
-        );
-
-        await program.provider.connection.confirmTransaction(dropsig);
-        const [team2] = await anchor.web3.PublicKey.findProgramAddress(
-            [
-                anchor.utils.bytes.utf8.encode("team_account"),
-                anchor.utils.bytes.utf8.encode("Can's Team"),
-            ],
-            program.programId
-        );
-        console.log(`User2 key: ${user2.publicKey.toBase58()}`);
-        console.log(`Team2 acc: ${team2.toBase58()}`);
-
-        const ix = program.methods
-            .createTeam("Can's Team", 10)
-            .accounts({
-                teamAccount: team2,
-                signer: user2.publicKey,
-            })
-            .signers([user2]);
-
-        const tx = await ix.rpc();
-        /*
-        const tx = await ix.transaction();
-        const transaction = new anchor.web3.Transaction().add(tx);
-        const signature = await provider.sendAndConfirm(transaction, [user2]);
-        console.log(signature);*/
-
-        console.log(`Transaction id: ${tx}`);
-        const acc = (await ix.pubkeys()).teamAccount;
-        const data = await program.account.team.fetch(acc);
-
-        const allAccs = await program.account.team.all();
-        console.log(allAccs);
-
-        allAccs.map((accs) => {
-            console.log(accs.account.teamCaptain.toBase58());
-        });
     });
 });
