@@ -1,3 +1,5 @@
+use std::mem;
+
 use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -245,8 +247,7 @@ pub struct CreateTeam<'info> {
     #[account(
         init,
         payer = signer,
-        //todo: change space later
-        space = 1000,
+        space = Team::LEN,
         seeds = ["team_account".as_bytes(), name.as_bytes()],
         bump
     )]
@@ -266,7 +267,7 @@ pub struct CreateProposal<'info> {
     #[account(
         init,
         payer = signer,
-        space = 1000,
+        space = Proposal::LEN,
         seeds = ["proposal_account".as_bytes(), title.as_bytes()],
         bump,
         constraint = team_account.team_captain == signer.key() // Only team captain can create proposal.
@@ -423,4 +424,32 @@ pub enum ErrorCode {
     PlayerAlreadyClaimed,
     #[msg("Please enter proper proposal type!")]
     WrongProposalType,
+}
+
+impl Team {
+    const LEN: usize =
+        8 + // discriminator
+        32 + // name
+        1 + // bump
+        8 + // capacity
+        5 * 32 + // players (max 5 player)
+        5 * 32 + // invited players
+        5 * 32; // tournaments
+}
+
+impl Proposal {
+    const LEN: usize =
+        8 + // discriminator
+        32 + // title
+        32 + // porposal_type
+        32 + //owner
+        32 + //description
+        8 + // vote_yes
+        8 + // vote_no
+        1 + // bump
+        5 * 4 + // prize distribution
+        32 + // tournament_selection
+        mem::size_of::<ProposalStatus>() + // Proposal status
+        5 * 32 + // voted_players
+        5 * 32; // claimed_players
 }
