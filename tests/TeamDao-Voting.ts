@@ -117,22 +117,6 @@ describe("TeamDao-Voting", () => {
             program.programId
         );
 
-        /*
-        let proposal_user = anchor.web3.Keypair.generate();
-        let dropsig = await program.provider.connection.requestAirdrop(
-            proposal_user.publicKey,
-            anchor.web3.LAMPORTS_PER_SOL
-        );
-        await program.provider.connection.confirmTransaction(dropsig);
-
-        let dropsig2 = await program.provider.connection.requestAirdrop(
-            proposal,
-            5 * anchor.web3.LAMPORTS_PER_SOL
-        );
-
-        await program.provider.connection.confirmTransaction(dropsig2);
-
-        console.log(`Proposal user: ${proposal_user.publicKey}`);*/
         console.log(`Proposal acc: ${proposal.toBase58()}`);
 
         const ix = program.methods
@@ -156,11 +140,6 @@ describe("TeamDao-Voting", () => {
         const accs = await program.account.team.all();
         console.log(proposals);
         console.log(accs);
-        /*
-        const proposalacc = await program.account.proposal.fetch(proposal);
-        console.log(
-            proposalacc.lamports.toNumber() / anchor.web3.LAMPORTS_PER_SOL
-        );*/
     });
 
     it("Players give their votes for proposal", async () => {
@@ -230,23 +209,6 @@ describe("TeamDao-Voting", () => {
             ],
             program.programId
         );
-
-        /*
-        let proposal_user = anchor.web3.Keypair.generate();
-        let dropsig = await program.provider.connection.requestAirdrop(
-            proposal_user.publicKey,
-            anchor.web3.LAMPORTS_PER_SOL
-        );
-        await program.provider.connection.confirmTransaction(dropsig);
-
-        let dropsig2 = await program.provider.connection.requestAirdrop(
-            proposal,
-            5 * anchor.web3.LAMPORTS_PER_SOL
-        );
-
-        await program.provider.connection.confirmTransaction(dropsig2);
-
-        console.log(`Proposal user: ${proposal_user.publicKey}`);*/
         console.log(`Proposal acc: ${proposal.toBase58()}`);
 
         const ix = program.methods
@@ -462,6 +424,6 @@ describe("TeamDao-Voting", () => {
             .rpc();
 
         let players = (await program.account.team.fetch(team)).players;
-        console.log(`Players before player1 leaving: ${players}`);
+        console.log(`Players after player1 leaving: ${players}`);
     });
 });
