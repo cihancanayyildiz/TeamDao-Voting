@@ -11,6 +11,10 @@ pub mod team_dao_voting {
     // Creates a new team.
     pub fn create_team(ctx: Context<CreateTeam>, name: String, player_capacity: u32) -> Result<()> {
         let team = &mut ctx.accounts.team_account;
+        // Team cant have more than 5 players!
+        if player_capacity > 5 {
+            return err!(ErrorCode::InvalidPlayerCapacity);
+        }
         team.bump = *ctx.bumps.get("team_account").unwrap();
         team.name = name;
         team.player_capacity = player_capacity;
@@ -439,6 +443,8 @@ pub enum ErrorCode {
     PlayerAlreadyClaimed,
     #[msg("Please enter proper proposal type!")]
     WrongProposalType,
+    #[msg("Please enter proper player capacity!")]
+    InvalidPlayerCapacity,
 }
 
 impl Team {
