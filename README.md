@@ -24,3 +24,11 @@ Smart contract features:
 | transfer_ownership | `Team PDA Account`                        | `new_captain: Pubkey`                                                                                                           |
 | claim_the_prize    | `Team PDA Account` `Proposal PDA Account` | `tournament_prize: u64`                                                                                                         |
 | leave_the_team     | `Team PDA Account`                        | No parameter                                                                                                                    |
+
+# How to run
+
+-   Clone the repository.
+-   [Go through this link and complete the steps](https://www.anchor-lang.com/docs/installation)
+-   Open the project directory with your terminal.
+-   Run this command: `yarn install && anchor test`
+-   You will see the test results 🎉
