@@ -440,4 +440,28 @@ describe("TeamDao-Voting", () => {
 
         console.log(`New team captain ${teamData.teamCaptain.toBase58()}`);
     });
+
+    it("Leave the team", async () => {
+        const [team] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                anchor.utils.bytes.utf8.encode("team_account"),
+                anchor.utils.bytes.utf8.encode("Cihan's Team"),
+            ],
+            program.programId
+        );
+        let oldPlayers = (await program.account.team.fetch(team)).players;
+        console.log(`Players before player1 leaving: ${oldPlayers}`);
+
+        await program.methods
+            .leaveTheTeam()
+            .accounts({
+                teamAccount: team,
+                signer: player1.publicKey,
+            })
+            .signers([player1])
+            .rpc();
+
+        let players = (await program.account.team.fetch(team)).players;
+        console.log(`Players before player1 leaving: ${players}`);
+    });
 });

@@ -238,6 +238,21 @@ pub mod team_dao_voting {
 
         Ok(())
     }
+
+    // Players can leave the team by using this function.
+    pub fn leave_the_team(ctx: Context<LeaveTheTeam>) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
+
+        // check if player in the team.
+        if !team.players.contains(ctx.accounts.signer.key) {
+            return err!(ErrorCode::PlayerDoesntExist);
+        }
+
+        //removing him from team
+        team.players.retain(|&x| x != *ctx.accounts.signer.key);
+
+        Ok(())
+    }
 }
 
 // Creates a new team.
